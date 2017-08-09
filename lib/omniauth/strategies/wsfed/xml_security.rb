@@ -65,6 +65,7 @@ module OmniAuth
           end
 
           def validate_doc(base64_cert, soft = true)
+
             # validate references
 
             # check for inclusive namespaces
@@ -82,7 +83,7 @@ module OmniAuth
             sig_element.remove
 
             # check digests
-            saml_version = settings[:saml_version]
+            #saml_version = settings[:saml_version]
             REXML::XPath.each(sig_element, "//ds:Reference", {"ds"=>DSIG}) do |ref|
               uri                           = ref.attributes.get_attribute("URI").value
               hashed_element                = REXML::XPath.first(self, "//[@ID='#{uri[1,uri.size]}']") ||
@@ -100,8 +101,10 @@ module OmniAuth
             end
 
             # verify signature
-            canoner                 = XML::Util::XmlCanonicalizer.new(false, true)
             signed_info_element     = REXML::XPath.first(sig_element, "//ds:SignedInfo", {"ds"=>DSIG})
+            signed_info_element.attributes['xmlns'] = DSIG
+
+            canoner                 = XML::Util::XmlCanonicalizer.new(false, true)
             canon_string            = canoner.canonicalize(signed_info_element)
 
             base64_signature        = REXML::XPath.first(sig_element, "//ds:SignatureValue", {"ds"=>DSIG}).text
@@ -134,6 +137,7 @@ module OmniAuth
 
           def algorithm(element)
             algorithm = element.attribute("Algorithm").value if element
+
             algorithm = algorithm && algorithm =~ /sha(.*?)$/i && $1.to_i
             case algorithm
             when 256 then OpenSSL::Digest::SHA256
