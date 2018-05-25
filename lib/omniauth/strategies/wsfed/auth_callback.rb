@@ -36,11 +36,11 @@ module OmniAuth
         end
 
         def created_at
-          Time.parse(REXML::XPath.first(wstrust_lifetime, '//wsu:Created', { 'wsu' => WS_UTILITY }).text)
+          Time.parse(Utils.element_text(REXML::XPath.first(wstrust_lifetime, '//wsu:Created', { 'wsu' => WS_UTILITY })))
         end
 
         def expires_at
-          Time.parse(REXML::XPath.first(wstrust_lifetime, '//wsu:Expires', { 'wsu' => WS_UTILITY }).text)
+          Time.parse(Utils.element_text(REXML::XPath.first(wstrust_lifetime, '//wsu:Expires', { 'wsu' => WS_UTILITY })))
         end
 
 

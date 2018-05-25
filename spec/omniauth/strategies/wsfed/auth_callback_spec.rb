@@ -87,6 +87,26 @@ describe OmniAuth::Strategies::WSFed::AuthCallback do
 
     end
 
+
+  end
+
+  describe 'Prevent node text with comment attack' do
+    before(:each) do
+      @wsfed_settings = {}
+    end
+
+    let(:auth_callback) { described_class.new(load_support_xml(:saml1_example_text_attack), @wsfed_settings.merge(saml_version: '1')) }
+
+    it 'should extract the authentication claims' do
+      expected_claims = {
+          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'                => 'kbeckman.c4sc@gmail.com',
+          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'                        => 'kbeckman.c4sc',
+          'http://schemas.microsoft.com/accesscontrolservice/2010/07/claims/identityprovider' => 'http://identity.c4sc.com/trust/'
+      }
+
+      auth_callback.attributes.should == expected_claims
+    end
+
   end
 
 end

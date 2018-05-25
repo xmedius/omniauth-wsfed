@@ -11,7 +11,7 @@ module OmniAuth
 
         def audience
           applies_to = REXML::XPath.first(document, '//t:RequestSecurityTokenResponse/wsp:AppliesTo', { 't' => WS_TRUST, 'wsp' => WS_POLICY })
-          REXML::XPath.first(applies_to, '//wsa:EndpointReference/wsa:Address').text
+          Utils.element_text(REXML::XPath.first(applies_to, '//wsa:EndpointReference/wsa:Address'))
         end
 
         def issuer
@@ -29,9 +29,9 @@ module OmniAuth
 
               if attr_element.elements.count > 1
                 value = []
-                attr_element.elements.each { |element| value << element.text }
+                attr_element.elements.each { |element| value << Utils.element_text(element) }
               else
-                value = attr_element.elements.first.text.to_s.lstrip.rstrip
+                value = Utils.element_text(attr_element.elements.first).to_s.lstrip.rstrip
               end
 
               result[name] = value

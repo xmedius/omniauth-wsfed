@@ -13,6 +13,7 @@ module OmniAuth
       autoload :SAML1Token,             'omniauth/strategies/wsfed/saml_1_token'
       autoload :ValidationError,        'omniauth/strategies/wsfed/validation_error'
       autoload :XMLSecurity,            'omniauth/strategies/wsfed/xml_security'
+      autoload :Utils,                  'omniauth/strategies/wsfed/utils'
 
       WS_TRUST        = 'http://schemas.xmlsoap.org/ws/2005/02/trust'
       WS_POLICY       = 'http://schemas.xmlsoap.org/ws/2004/09/policy'
