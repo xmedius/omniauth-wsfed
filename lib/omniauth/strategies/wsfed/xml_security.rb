@@ -22,11 +22,11 @@
 # Copyright 2007 Sun Microsystems Inc. All Rights Reserved
 # Portions Copyrighted 2007 Todd W Saxton.
 
-require 'rubygems'
+require "rubygems"
 require "rexml/document"
 require "rexml/xpath"
 require "openssl"
-require "xmlcanonicalizer"
+require "nokogiri"
 require "digest/sha1"
 require "digest/sha2"
 
@@ -37,7 +37,9 @@ module OmniAuth
       module XMLSecurity
 
         class SignedDocument < REXML::Document
+
           DSIG = "http://www.w3.org/2000/09/xmldsig#"
+          NOKOGIRI_OPTIONS = Nokogiri::XML::ParseOptions::STRICT | Nokogiri::XML::ParseOptions::NONET
 
           attr_accessor :signed_element_id, :settings
 
@@ -66,6 +68,10 @@ module OmniAuth
 
           def validate_doc(base64_cert, soft = true)
 
+            document = Nokogiri::XML(self.to_s) do |config|
+              config.options = NOKOGIRI_OPTIONS
+            end
+
             # validate references
 
             # check for inclusive namespaces
@@ -78,24 +84,35 @@ module OmniAuth
               inclusive_namespaces          = prefix_list.split(" ")
             end
 
-            # remove signature node
             sig_element = REXML::XPath.first(self, "//ds:Signature", {"ds"=>DSIG})
+
+            # canonicalization method
+            canonicalization_method_element = REXML::XPath.first(sig_element, "./ds:SignedInfo/ds:CanonicalizationMethod","ds" => DSIG )
+            canon_algorithm = canon_algorithm(canonicalization_method_element)
+
+            noko_sig_element = document.at_xpath('//ds:Signature', 'ds' => DSIG)
+            noko_signed_info_element = noko_sig_element.at_xpath('./ds:SignedInfo', 'ds' => DSIG)
+
+            canon_string = noko_signed_info_element.canonicalize(canon_algorithm)
+            noko_sig_element.remove
+
+            # remove signature node
             sig_element.remove
 
             # check digests
             #saml_version = settings[:saml_version]
             REXML::XPath.each(sig_element, "//ds:Reference", {"ds"=>DSIG}) do |ref|
               uri                           = ref.attributes.get_attribute("URI").value
-              hashed_element                = REXML::XPath.first(self, "//*[@ID='#{uri[1,uri.size]}']") ||
-                                              REXML::XPath.first(self, "//*[@AssertionID='#{uri[1,uri.size]}']")
-              canoner                       = XML::Util::XmlCanonicalizer.new(false, true)
-              canoner.inclusive_namespaces  = inclusive_namespaces if canoner.respond_to?(:inclusive_namespaces) && !inclusive_namespaces.empty?
-              canon_hashed_element          = canoner.canonicalize(hashed_element)
+              hashed_element                = document.at_xpath("//*[@ID='#{uri[1,uri.size]}']") ||
+                                              document.at_xpath("//*[@AssertionID='#{uri[1,uri.size]}']")
+
+              canon_hashed_element          = hashed_element.canonicalize(canon_algorithm, inclusive_namespaces)
               digest_algorithm              = algorithm(REXML::XPath.first(ref, "//ds:DigestMethod", {"ds"=>DSIG}))
               hash                          = Base64.encode64(digest_algorithm.digest(canon_hashed_element)).chomp
               digest_value                  = Utils.element_text(REXML::XPath.first(ref, "//ds:DigestValue", {"ds"=>DSIG}))
 
               unless digests_match?(hash, digest_value)
+
                 return soft ? false : (raise OmniAuth::Strategies::WSFed::ValidationError.new("Digest mismatch"))
               end
             end
@@ -103,9 +120,6 @@ module OmniAuth
             # verify signature
             signed_info_element     = REXML::XPath.first(sig_element, "//ds:SignedInfo", {"ds"=>DSIG})
             signed_info_element.attributes['xmlns'] = DSIG
-
-            canoner                 = XML::Util::XmlCanonicalizer.new(false, true)
-            canon_string            = canoner.canonicalize(signed_info_element)
 
             base64_signature        = Utils.element_text(REXML::XPath.first(sig_element, "//ds:SignatureValue", {"ds"=>DSIG}))
             signature               = Base64.decode64(base64_signature)
@@ -147,10 +161,27 @@ module OmniAuth
               OpenSSL::Digest::SHA1
             end
           end
+
+          def canon_algorithm(element)
+            algorithm = element
+            if algorithm.is_a?(REXML::Element)
+              algorithm = element.attribute('Algorithm').value
+            end
+
+            case algorithm
+              when "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
+                   "http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments"
+                Nokogiri::XML::XML_C14N_1_0
+              when "http://www.w3.org/2006/12/xml-c14n11",
+                   "http://www.w3.org/2006/12/xml-c14n11#WithComments"
+                Nokogiri::XML::XML_C14N_1_1
+              else
+                Nokogiri::XML::XML_C14N_EXCLUSIVE_1_0
+            end
+          end
+
         end
-
       end
-
     end
   end
 end
