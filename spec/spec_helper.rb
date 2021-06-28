@@ -1,6 +1,8 @@
 require 'omniauth-wsfed'
 require 'rack/test'
 
+OmniAuth.config.request_validation_phase = proc {}
+
 RSpec.configure do |config|
   config.include Rack::Test::Methods
 end
