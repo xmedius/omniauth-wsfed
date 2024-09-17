@@ -105,26 +105,26 @@ module OmniAuth
 
             # check digests
             #saml_version = settings[:saml_version]
-            REXML::XPath.each(signed_info_element, "./ds:Reference", {"ds"=>DSIG}) do |ref|
-              uri                           = ref.attributes.get_attribute("URI").value
-              reference_nodes               = document.xpath("//*[@ID=$uri]", nil, { "uri" => uri[1,uri.size] }) ||
-                                              document.xpath("//*[@AssertionID=$uri]", nil, { "uri" => uri[1,uri.size] })
+            ref = REXML::XPath.first(signed_info_element, "./ds:Reference", {"ds"=>DSIG})
 
-              if reference_nodes.length > 1 # ensures no elements with same ID to prevent signature wrapping attack.
-                return soft ? false : (raise OmniAuth::Strategies::WSFed::ValidationError.new("Digest Mismatch"))
-              end
+            uri                           = ref.attributes.get_attribute("URI").value
+            reference_nodes               = document.xpath("//*[@ID=$uri]", nil, { "uri" => uri[1,uri.size] }) ||
+                                            document.xpath("//*[@AssertionID=$uri]", nil, { "uri" => uri[1,uri.size] })
 
-              hashed_element = reference_nodes[0]
+            if reference_nodes.length > 1 # ensures no elements with same ID to prevent signature wrapping attack.
+              return soft ? false : (raise OmniAuth::Strategies::WSFed::ValidationError.new("Digest Mismatch"))
+            end
 
-              canon_hashed_element          = hashed_element.canonicalize(canon_algorithm, inclusive_namespaces)
-              digest_algorithm              = algorithm(REXML::XPath.first(ref, "./ds:DigestMethod", {"ds"=>DSIG}))
-              hash                          = Base64.encode64(digest_algorithm.digest(canon_hashed_element)).chomp
-              digest_value                  = Utils.element_text(REXML::XPath.first(ref, "./ds:DigestValue", {"ds"=>DSIG}))
+            hashed_element = reference_nodes[0]
 
-              unless digests_match?(hash, digest_value)
+            canon_hashed_element          = hashed_element.canonicalize(canon_algorithm, inclusive_namespaces)
+            digest_algorithm              = algorithm(REXML::XPath.first(ref, "./ds:DigestMethod", {"ds"=>DSIG}))
+            hash                          = Base64.encode64(digest_algorithm.digest(canon_hashed_element)).chomp
+            digest_value                  = Utils.element_text(REXML::XPath.first(ref, "./ds:DigestValue", {"ds"=>DSIG}))
 
-                return soft ? false : (raise OmniAuth::Strategies::WSFed::ValidationError.new("Digest mismatch"))
-              end
+            unless digests_match?(hash, digest_value)
+
+              return soft ? false : (raise OmniAuth::Strategies::WSFed::ValidationError.new("Digest mismatch"))
             end
 
             base64_signature        = Utils.element_text(REXML::XPath.first(sig_element, "//ds:SignatureValue", {"ds"=>DSIG}))
