@@ -15,8 +15,9 @@ Gem::Specification.new do |gem|
 
   gem.add_runtime_dependency 'omniauth',          '~> 2.0'
   gem.add_runtime_dependency 'nokogiri',          '>= 1.10.5'
+  gem.add_runtime_dependency 'rexml'
 
-  gem.add_development_dependency 'rspec',     '~> 2.12',  '>= 2.12.0'
+  gem.add_development_dependency 'rspec',     '~> 3.13',  '>= 3.0.0'
   gem.add_development_dependency 'rake',      '~> 10.1',  '>= 10.1.0'
   gem.add_development_dependency 'rack-test', '~> 0.6',   '>= 0.6.2'
 
